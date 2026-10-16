@@ -31,4 +31,19 @@ def load_images(path):
 def load_labels(path):
     # same idea: 8-byte header, magic number 2049, then one byte per label
 
-    return
+    #open in binary mode
+    with gzip.open(path, 'rb') as f:
+        header_bytes = f.read(8)
+
+        #unpack header into magic and count
+        magic, count = struct.unpack('>2I', header_bytes)
+
+        #if the magic number isn't 2049, raise an error
+        if magic != 2049:
+            raise ValueError(f"Expected 2049, was not found got {magic}")
+
+        pixel_bytes = f.read()
+
+        pixels = np.frombuffer(pixel_bytes, dtype=np.uint8)
+
+    return pixels
