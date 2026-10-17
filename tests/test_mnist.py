@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from mnist import load_images, load_labels
+from mnist import load_images, load_labels, prepare
 
 DATA = Path(__file__).parent.parent / "data"
 
@@ -93,3 +93,40 @@ def test_load_images_real_files(name, count):
 
     assert images.shape == (count, 28, 28)
     assert images.dtype == np.uint8
+
+
+def fake_images():
+    # 2 images of 3x4, covering the full 0..255 range
+    images = np.arange(2 * 3 * 4, dtype=np.uint8).reshape(2, 3, 4)
+    images[0, 0, 0] = 0
+    images[1, 2, 3] = 255
+    return images
+
+
+def test_prepare_flattens_each_image_to_a_row():
+    out = prepare(fake_images())
+
+    assert out.shape == (2, 12)
+
+
+def test_prepare_returns_floats():
+    out = prepare(fake_images())
+
+    assert np.issubdtype(out.dtype, np.floating)
+
+
+def test_prepare_scales_to_0_1():
+    out = prepare(fake_images())
+
+    assert out.min() == 0.0
+    assert out.max() == 1.0
+
+
+def test_prepare_keeps_pixel_order():
+    images = fake_images()
+
+    out = prepare(images)
+
+    # row i is image i read left to right, top to bottom
+    assert np.allclose(out[0], images[0].ravel() / 255)
+    assert np.allclose(out[1], images[1].ravel() / 255)

@@ -47,3 +47,12 @@ def load_labels(path):
         pixels = np.frombuffer(pixel_bytes, dtype=np.uint8)
 
     return pixels
+
+def prepare(images):
+
+    count, rows, cols = images.shape
+    reshape = images.reshape(count, rows * cols)
+
+    normalized = reshape / 255
+
+    return normalized
