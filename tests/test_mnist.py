@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from mnist import load_labels
+from mnist import load_images, load_labels
 
 DATA = Path(__file__).parent.parent / "data"
 
@@ -15,6 +15,14 @@ def write_labels(path, labels, magic=2049):
     header = struct.pack(">II", magic, len(labels))
     with gzip.open(path, "wb") as f:
         f.write(header + bytes(labels))
+
+
+def write_images(path, pixels, magic=2051):
+    # Build a tiny IDX image file: 16-byte big-endian header, then one byte per pixel
+    count, rows, cols = pixels.shape
+    header = struct.pack(">IIII", magic, count, rows, cols)
+    with gzip.open(path, "wb") as f:
+        f.write(header + pixels.astype(np.uint8).tobytes())
 
 
 def test_load_labels_reads_values(tmp_path):
@@ -50,3 +58,38 @@ def test_load_labels_real_files(name, count):
     assert labels.shape == (count,)
     assert labels.min() == 0
     assert labels.max() == 9
+
+
+def test_load_images_reads_pixels(tmp_path):
+    path = tmp_path / "images.gz"
+    pixels = np.arange(2 * 3 * 4, dtype=np.uint8).reshape(2, 3, 4)
+    write_images(path, pixels)
+
+    images = load_images(path)
+
+    assert images.shape == (2, 3, 4)
+    assert images.dtype == np.uint8
+    assert np.array_equal(images, pixels)
+
+
+def test_load_images_rejects_wrong_magic(tmp_path):
+    path = tmp_path / "labels.gz"
+    write_images(path, np.zeros((1, 2, 2)), magic=2049)
+
+    with pytest.raises(ValueError):
+        load_images(path)
+
+
+@pytest.mark.parametrize("name, count", [
+    ("train-images-idx3-ubyte.gz", 60000),
+    ("t10k-images-idx3-ubyte.gz", 10000),
+])
+def test_load_images_real_files(name, count):
+    path = DATA / name
+    if not path.exists():
+        pytest.skip(f"{name} not downloaded")
+
+    images = load_images(path)
+
+    assert images.shape == (count, 28, 28)
+    assert images.dtype == np.uint8

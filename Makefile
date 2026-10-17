@@ -1,9 +1,9 @@
-.PHONY: setup test run clean
+.PHONY: setup test run data plot clean
 
 setup:
 	uv sync
 
-test:
+test: data
 	uv run pytest
 
 run:
@@ -11,6 +11,9 @@ run:
 
 data:
 	uv run python src/download.py
+
+plot: data
+	uv run python src/plot_samples.py
 
 clean:
 	uv run python -c "import shutil; [shutil.rmtree(d, ignore_errors=True) for d in ('out', 'data')]"
